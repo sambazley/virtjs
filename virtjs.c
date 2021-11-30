@@ -21,18 +21,15 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <linux/uinput.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
-static int stop = 0;
-
 static void sigint(int signum)
 {
 	(void) signum;
-
-	stop = 1;
 }
 
 int main(int argc, char *argv[])
@@ -109,13 +106,23 @@ int main(int argc, char *argv[])
 
 	signal(SIGINT, sigint);
 
-	do {
-		struct input_event ev;
-		rc = libevdev_next_event(real, LIBEVDEV_READ_FLAG_NORMAL, &ev);
-		if (rc == 0) {
-			write(uifd, &ev, sizeof(ev));
+	struct pollfd fds [] = {
+		{rfd, POLLIN, 0},
+		{STDOUT_FILENO, POLLHUP, 0},
+	};
+
+	while (poll(fds, 2, -1) > 0) {
+		if (fds[0].revents & POLLIN) {
+			struct input_event ev;
+			rc = libevdev_next_event(real, LIBEVDEV_READ_FLAG_BLOCKING, &ev);
+			if (rc == 0) {
+				write(uifd, &ev, sizeof(ev));
+			}
 		}
-	} while ((rc == 1 || rc == 0 || rc == -EAGAIN) && !stop);
+		if (fds[1].revents & (POLLERR | POLLHUP)) {
+			break;
+		}
+	}
 
 	errno = 0;
 end:
