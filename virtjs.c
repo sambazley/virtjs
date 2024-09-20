@@ -115,8 +115,9 @@ int main(int argc, char *argv[])
 		if (fds[0].revents & POLLIN) {
 			struct input_event ev;
 			rc = libevdev_next_event(real, LIBEVDEV_READ_FLAG_BLOCKING, &ev);
-			if (rc == 0) {
+			while (rc == 0) {
 				write(uifd, &ev, sizeof(ev));
+				rc = libevdev_next_event(real, LIBEVDEV_READ_FLAG_BLOCKING, &ev);
 			}
 		}
 		if (fds[1].revents & (POLLERR | POLLHUP)) {
