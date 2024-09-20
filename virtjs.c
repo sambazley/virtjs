@@ -114,8 +114,10 @@ int main(int argc, char *argv[])
 	while (poll(fds, 2, -1) > 0) {
 		if (fds[0].revents & POLLIN) {
 			struct input_event ev;
-			rc = libevdev_next_event(real, LIBEVDEV_READ_FLAG_BLOCKING, &ev);
-			if (rc == 0) {
+			while (libevdev_next_event(real,
+						LIBEVDEV_READ_FLAG_NORMAL |
+						LIBEVDEV_READ_FLAG_BLOCKING,
+						&ev) == 0) {
 				write(uifd, &ev, sizeof(ev));
 			}
 		}
